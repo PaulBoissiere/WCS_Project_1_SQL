@@ -1,6 +1,6 @@
-# Pojet_1_SQL_Model_Compagny
+# WCS_Project_1_SQL
 Model company - Dashboarding 
 
-Requêtes SQL demandées et additionnels
+Requêtes SQL demandées et additionnels, sur une base de données livrée.
 
-Dashboard interactif demandé par le client plus KPIs additionnels, sur Tableau Software
+Dashboard interactif demandé par le client plus KPIs additionnels, sur Tableau Software.
