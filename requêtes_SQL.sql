@@ -1,6 +1,14 @@
-# Requête sales
+--OBJECTIFS
+--Sales: The number of products sold by category and by month, with comparison and rate of change compared to the same month of the previous year.
+--Finances: 1.The turnover of the orders of the last two months by country. 2.Orders that have not yet been paid.
+--Logistics: The stock of the 5 most ordered products.
+--Human Resources: Each month, the 2 sellers with the highest turnover.
 
-# Création view n-1
+
+
+-- Requête sales : Comparaison chaque mois N/N-1 en valeur et pourcentage
+
+-- Création view n-1
 CREATE VIEW test_2020 AS (SELECT YEAR(orders.orderDate) as annee_2020, MONTH(orders.orderDate) as mois_2020, productlines.productLine as productline_2020, SUM(quantityOrdered) as QtyOrder_2020
 FROM orderdetails
 JOIN orders ON orderdetails.orderNumber = orders.orderNumber
@@ -10,7 +18,7 @@ WHERE YEAR(orders.orderDate) = YEAR(CURDATE() - INTERVAL 1 YEAR)
 GROUP BY annee_2020, mois_2020, productline_2020
 ORDER BY mois_2020);
 
-#Création view n
+-- Création view n
 CREATE VIEW test_2021 AS (SELECT YEAR(orders.orderDate) as annee_2021, MONTH(orders.orderDate) as mois_2021, productlines.productLine as productline_2021, SUM(quantityOrdered) as QtyOrder_2021
 FROM orderdetails
 JOIN orders ON orderdetails.orderNumber = orders.orderNumber
@@ -20,14 +28,14 @@ WHERE YEAR(orders.orderDate) = YEAR(CURDATE())
 GROUP BY annee_2021, mois_2021, productline_2021
 ORDER BY mois_2021);
 
-#Calcul de la différence
+-- Calcul de la différence
 SELECT annee_2021, mois_2021, productline_2021, QtyOrder_2021 AS '2021', QtyOrder_2020 AS '2020', (QtyOrder_2021 - QtyOrder_2020) AS Difference, (QtyOrder_2021 - QtyOrder_2020) / QtyOrder_2020 AS Variation
 FROM test_2021
 RIGHT OUTER JOIN test_2020 ON test_2021.productline_2021 = test_2020.productline_2020
 WHERE test_2021.mois_2021 = test_2020.mois_2020
 GROUP BY annee_2021, mois_2021, productline_2021, productline_2020, QtyOrder_2021, QtyOrder_2020, Difference;
 
-# Sales requête additionnelle
+-- Sales requête additionnelle : permet d'afficher le chiffre d'affaires réalisé par chacun des vendeurs et par pays
 
 SELECT YEAR(orders.orderDate) AS annee, MONTH(orders.orderDate) AS mois, offices.country, employees.lastName, SUM(orderdetails.quantityOrdered * orderdetails.priceEach)
 FROM offices
@@ -39,18 +47,18 @@ WHERE orders.status != 'cancelled'
 GROUP BY annee, mois, offices.country, employees.lastName
 ORDER BY annee, mois;
 
-# 1ere requete Finance : chiffre d'affaire sur les 2 derniers mois par pays
+-- 1ere requete Finance : chiffre d'affaire sur les 2 derniers mois par pays
 
 SELECT offices.country AS country, MONTH(orderDate) AS mois, SUM(quantityOrdered * priceEach) AS turnover
 FROM orders
 JOIN customers ON orders.customerNumber = customers.customerNumber
 JOIN employees ON customers.salesRepEmployeeNumber = employees.EmployeeNumber
-JOIN offices ON employees.officeCode = offices. officeCode
+JOIN offices ON employees.officeCode = offices.officeCode
 JOIN orderdetails ON orders.orderNumber = orderdetails.orderNumber
 WHERE YEAR(orders.orderDate) = YEAR(NOW()) AND MONTH(orders.orderDate) >= MONTH(CURDATE() - INTERVAL 2 MONTH) AND orders.status != 'cancelled'
 GROUP BY country, mois;
 
-# Check 1ere requete finance 
+-- Check 1ere requete finance 
 
 SELECT offices.country AS country, YEAR(orderDate) AS annee, MONTH(orderDate) AS mois, SUM(quantityOrdered * priceEach) AS turnover
 FROM orders
@@ -68,7 +76,7 @@ JOIN offices ON employees.officeCode = offices. officeCode
 JOIN orderdetails ON orders.orderNumber = orderdetails.orderNumber
 WHERE YEAR(orders.orderDate) = YEAR(NOW()) AND MONTH(orders.orderDate) >= MONTH(CURDATE() - INTERVAL 2 MONTH);
 
-# Requête additionnelle Finances 1
+-- Requête additionnelle Finances 1
 
 SELECT YEAR(orders.orderDate), offices.country, SUM(orderdetails.quantityOrdered * orderdetails.priceEach) AS turnover_2021
 FROM customers 
@@ -79,7 +87,7 @@ JOIN orderdetails ON orders.orderNumber = orderdetails.orderNumber
 WHERE orders.status != 'cancelled'
 GROUP BY YEAR(orders.orderDate), country;
 
-# 2eme requête probleme payement
+-- 2eme requête probleme paiement
 
 SELECT orders.orderNumber, payments.customerNumber, SUM(quantityOrdered * priceEach) AS mt_order, payments.amount
 FROM orders
@@ -109,7 +117,7 @@ FROM total_payment
 RIGHT JOIN total_order 
 ON total_payment.orderNumber = total_order.orderNumber;
 
-# Credit limit non respecté 
+-- Credit limit non respecté 
 
 SELECT orders.customerNumber, orders.orderNumber, YEAR(orderDate) AS annee, SUM(quantityOrdered * priceEach) AS mt_order, creditLimit, (creditLimit - SUM(quantityOrdered * priceEach)) AS out_creditLimit
 FROM orders
@@ -119,7 +127,7 @@ RIGHT JOIN orderdetails ON orders.orderNumber = orderdetails.orderNumber
 WHERE orders.status != 'cancelled'
 GROUP BY orders.customerNumber, orders.orderNumber, annee;
 
-# Requête logistics
+-- Requête logistics : stock des 5 produits les plus vendus
 
 SELECT  orderdetails.productCode, products.productName , SUM(orderdetails.quantityOrdered) AS SommeOrders, products.quantityInStock
 FROM orderdetails
@@ -131,7 +139,7 @@ WHERE orders.status != 'cancelled'
 GROUP BY productCode
 ORDER BY sum(orderdetails.quantityOrdered) desc limit 5;
 
-# Requête additionnelle logistics
+-- Requête additionnelle logistics : faire ressortir les problèmes de stock (ex: les grosses commandes avec petit stock et vice versa)
 
 CREATE VIEW compstock AS (
 SELECT  YEAR(orders.orderDate), orderdetails.productCode, products.productName , SUM(orderdetails.quantityOrdered) AS Somme_Oders, products.quantityInStock
@@ -151,7 +159,7 @@ WHERE quantityInStock<(Somme_Oders*3) LIMIT 10;
 SELECT * FROM compstock
 WHERE quantityInStock>(Somme_Oders*3) LIMIT 10;
 
-# Requête human resources
+-- Requête human resources : 2 meilleurs vendeurs de chaque mois
 
 SELECT rank_turnover.annee, rank_turnover.mois, rank_turnover.employer, rank_turnover.nom, rank_turnover.prenom, rank_turnover.poste, rank_turnover.turnover
 FROM (
@@ -166,7 +174,7 @@ GROUP BY YEAR(orders.orderDate), MONTH(orders.orderDate), employees.employeeNumb
 ORDER BY MONTH(orders.orderDate), turnover DESC) as rank_turnover
 WHERE monthly_rank_turnover <= 2;
 
-# Requête human resources additionnelle
+-- Requête human resources additionnelle : créer l'inverse avec les "moins" bon vendeurs du mois afin de voir une saisonnalité (ex: a engrange beaucoup de vente en juin avant de partir en vacances en juillet)
 
 SELECT rank_turnover.annee, rank_turnover.mois, rank_turnover.employer, rank_turnover.nom, rank_turnover.prenom, rank_turnover.poste, rank_turnover.turnover, monthly_rank_turnover
 FROM (
